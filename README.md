@@ -2,17 +2,19 @@
 ## 一、准备开发板
 前段时间在网上碰巧看到一个视频（[原文链接点击这里](https://www.instructables.com/id/Morphing-Digital-Clock/)），很酷的数字变换时钟，代码还是开源的！于是我也想搞一个玩玩，淘宝搜LED显示屏，找了一圈找到一个尺寸320&#42;160mm、型号P5、分辨率也是64&#42;32的，但是卖家不提供相关资料，那我写个锤子的驱动啊。这时候拿出我封印已久的战舰板，满满的都是回忆啊！我打算用我的战舰板去移植代码，实现类似的效果。
 
+![](img/1.png)
+![](img/2.png)
+
 ## 二、先搞个框架
 ### 1.基本情况
  - LED矩阵显示屏分辨率：64&#42;32
  - LED矩阵显示屏占用区域：59&#42;15
  - 2.8寸TFT-LCD分辨率：320&#42;240
 
-
 ### 2.分割区域
 我打算用2.8寸显示屏实现上图的效果。首先分割区域，2.8寸TFT-LCD的宽度是足够的，以长度分割320/64=5，这样像素块长度为5，整个显示屏就被分割为了 **<font color=blue>64&#42;48</font>**； 接下来在块与块之间加入间隙，由于块区域的对称性，间隙的点数必须是偶数个，对于5&#42;5的区域，间隙设置为2是最适合的，显示像素点为 **<font color=blue>3&#42;3</font>** 个，如下图所示；如果间隙设置4的话，对应显示的像素点个数为1&#42;1个，5&#42;5的区域只有一个点会亮？一家独秀是不行的。
 
-<img src="https://img-blog.csdnimg.cn/20181101193046980.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L01ldGVvcl9z,size_16,color_FFFFFF,t_70" width=750>
+![](img/3.png)
 
 相关宏定义如下：
 ```c
@@ -30,11 +32,11 @@
 
 for循环绘制块区域的测试结果如下图：
 
-<img src="https://img-blog.csdnimg.cn/20181031214135998.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L01ldGVvcl9z,size_16,color_FFFFFF,t_70" width=550>
+![](img/4.png)
 
 该区域的蓝点密度为 **<font color=blue>59&#42;15</font>**，和LED矩阵用于显示的像素密度相同，达到了我想要的效果，很开心。有些东西用文字描述并没有用图表示来得直接，所以下面放张图表示一下宏定义的含义。测试代码并没有很大用处，这里就不贴了，画块区域的函数代码下面会讲。
 
-<img src="https://img-blog.csdnimg.cn/20181101191845129.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L01ldGVvcl9z,size_16,color_FFFFFF,t_70" width=550>
+![](img/5.png)
 
 ## 三、由点到线
 ### 1.重定义点函数
@@ -51,7 +53,7 @@ void DIGIT_DrawPixelBlock(u16 x, u16 y, u16 color)
 ```
 参数`color`表示块的颜色，为了更直观的编写和后期调试，这里的参数x和y被重定位了！蓝色显示框架的起点转换为了(0, 0)。关于这个`locY_now`，它的作用是移动显示的起点坐标。数字是多个位置显示的，函数中总要加入偏移量，此时此刻思考一下偏移量最好放在哪里，这时候有几种方法：第一种方法是把偏移量放在画块函数之中；第二种方法是在画线函数之中，将偏移量+初始位置作为实参传给画块函数；第三种方法是将偏移量+初始位置作为实参传给画线函数，这就有点扯淡了。。因为后面的动画切换会疯狂调用画线函数。第一种和第二种方法本质是相同的，但放在底层的画块函数还是好那么一丢丢。当时写的时候好像也没考虑那么多，只是感觉工程被我写得越来越复杂 T^T。
 
-<img src="https://img-blog.csdnimg.cn/20181101204115940.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L01ldGVvcl9z,size_16,color_FFFFFF,t_70" width=550>
+![](img/6.png)
 
 ### 2.点到为止画线
 画线函数很好写也很好理解，就是比较两个点的x和y坐标，判断是横线还是竖线，参数错误的情况可写可不写，这里就不多说了，一切尽在fucking source code中。
@@ -106,8 +108,7 @@ const u8 digitBits[] = {
 ### 2.数字的段
 数字分为7段（点不算），seg为段号，段宽段高都设置为了6，和参考的效果一样。这里使用了宏定义，想要设置为其他的值也很方便。
 
-<img src="https://img-blog.csdnimg.cn/20181031201825876.png"  width=180>
-
+![](img/7.png)
 
 ```c
 #define SA 		 0
@@ -156,7 +157,7 @@ void DIGIT_DrawDigit(u8 num)  //参数范围范围0-9
 }
 ```
 
-<img src="https://img-blog.csdnimg.cn/20181101212032969.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L01ldGVvcl9z,size_16,color_FFFFFF,t_70"  width=300>
+![](img/8.png)
 
 ## 五、实现动画
 
@@ -311,4 +312,4 @@ void DIGIT_DrawDot(u8 mode, u8 const locXY[][2])
 ```
 ## 八、最终的效果
 颜色是随机变换的，动画还挺炫酷的吧！代码等有不足的地方还请不吝赐教。
-<img src="https://img-blog.csdnimg.cn/20181101232344268.gif" width=550>
+![](img/9.gif)
